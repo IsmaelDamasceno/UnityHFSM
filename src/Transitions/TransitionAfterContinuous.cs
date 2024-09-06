@@ -4,11 +4,11 @@ namespace UnityHFSM
 {
 	/// <summary>
 	/// A class used to determine whether the state machine should transition to another state.
-	/// The transition will occur only when the condition remains true for a predefined period of time, determined by delay.
+	/// The transition will occur only when the condition remains true for a predefined period of time, determined by conditionTotalTime.
 	/// </summary>
 	public class TransitionAfterContinuous<TStateId> : TransitionBase<TStateId>
 	{
-		public float delay;
+		public float conditionTotalTime;
 		public ITimer timer;
 
 		public Func<TransitionAfterContinuous<TStateId>, bool> condition;
@@ -19,22 +19,22 @@ namespace UnityHFSM
 		/// <summary>
 		/// Initialises a new instance of the TransitionAfterContinuous class.
 		/// </summary>
-		/// <param name="delay">The amount of time that must elapse with the <c>to</c> being true for the transition to <c>to</c> happen </param>
+		/// <param name="conditionTotalTime">The amount of time that must elapse with the <c>to</c> being true for the transition to <c>to</c> happen </param>
 		/// <param name="condition">A function that returns true if the state machine
 		/// 	should transition to the <c>to</c> state.
-		/// 	It is only called every frame, but the transition will occur only if the condition is true for the amount of continuous amount of time, determined by <c>delay</c> .</param>
+		/// 	It is only called every frame, but the transition will occur only if the condition is true for the amount of continuous amount of time, determined by <c>conditionTotalTime</c> .</param>
 		/// <inheritdoc cref="Transition{TStateId}(TStateId, TStateId, Func{Transition{TStateId}, bool},
 		/// 	Action{Transition{TStateId}}, Action{Transition{TStateId}}, bool)" />
 		public TransitionAfterContinuous(
 				TStateId from,
 				TStateId to,
-				float delay,
+				float conditionTotalTime,
 				Func<TransitionAfterContinuous<TStateId>, bool> condition = null,
 				Action<TransitionAfterContinuous<TStateId>> onTransition = null,
 				Action<TransitionAfterContinuous<TStateId>> afterTransition = null,
 				bool forceInstantly = false) : base(from, to, forceInstantly)
 		{
-			this.delay = delay;
+			this.conditionTotalTime = conditionTotalTime;
 			this.condition = condition;
 			this.beforeTransition = onTransition;
 			this.afterTransition = afterTransition;
@@ -50,11 +50,11 @@ namespace UnityHFSM
 		{
 			// if no condition is provided, the state will auto transition after the delay amount of time
 			if (condition == null)
-				return timer.Elapsed > delay;
+				return timer.Elapsed > conditionTotalTime;
 
 			// if a condition is provided, it will be tested every frame, and the transition should occur when delay amount of time has elapsed
 			if (condition(this))
-				return timer.Elapsed > delay;
+				return timer.Elapsed > conditionTotalTime;
 
 			// if the condition is false, the timer will reset, restarting the whole process
 			timer.Reset();
@@ -72,14 +72,14 @@ namespace UnityHFSM
 		public TransitionAfterContinuous(
 			string @from,
 			string to,
-			float delay,
+			float conditionTotalTime,
 			Func<TransitionAfterContinuous<string>, bool> condition = null,
 			Action<TransitionAfterContinuous<string>> onTransition = null,
 			Action<TransitionAfterContinuous<string>> afterTransition = null,
 			bool forceInstantly = false) : base(
 				@from,
 				to,
-				delay,
+				conditionTotalTime,
 				condition,
 				onTransition: onTransition,
 				afterTransition: afterTransition,
