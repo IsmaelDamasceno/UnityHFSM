@@ -33,7 +33,7 @@ It has a special focus on the temporal aspects of state transitions, making it i
 
 - UnityHFSM is **lightweight** and **efficient**, making it perfect for solving small and big problems
 
-- It is **especially designed for Unity**, and supports **coroutines**, which would otherwise be difficult to implement in a state machine
+- It is **especially designed for Unity**, and supports **coroutines**, which would otherwise be difficult to integrate in a state machine
 
 - **No GC Allocations** for state changes / updates / ... after setting up the state machine (-> No unwanted GC related lag spikes because of the state machine)
 
@@ -70,6 +70,8 @@ It has a special focus on the temporal aspects of state transitions, making it i
 - [Scalable (class-based)](#class-based-architecture)
 
 - [Generics](#generics)
+
+- [Debugging Tips](#debugging-tips)
 
 ## Installation
 
@@ -117,7 +119,7 @@ You can also add it directly from GitHub on Unity 2019.4+. Note that you won't b
   - `https://github.com/Inspiaaa/UnityHFSM.git#release` for the development version
   - `https://github.com/Inspiaaa/UnityHFSM.git#v1.8.0` for a specific version (`v1.8.0` here)
 - Click <kbd>Add</kbd>
-- Tip: If you're using VSCode and you're not getting any IntelliSense, you may have to regenerate the `.csproj` project files (<kbd>Edit</kbd> > <kbd>Preferences</kbd> > <kbd>External Tools</kbd> > <kbd>Regenerate project files</kbd>)
+- Tip: If you're using VSCode, and you're not getting any IntelliSense, you may have to regenerate the `.csproj` project files (<kbd>Edit</kbd> > <kbd>Preferences</kbd> > <kbd>External Tools</kbd> > <kbd>Regenerate project files</kbd>)
 
 </details>
 
@@ -474,8 +476,8 @@ flowchart TD
 
   NeedsExitTime -->|No| End([Change State])
 
-  NeedsExitTime -->|Yes| OnExitRequest["FSM calls<br> activeState.OnExitRequest()"]
-  OnExitRequest --> StateCanExit{"Does the active state <br> call fsm.StateCanExit()?"}
+  NeedsExitTime -->|Yes| OnExitRequest["FSM calls<br>activeState.OnExitRequest()"]
+  OnExitRequest --> StateCanExit{"Does the active state<br>call fsm.StateCanExit()?"}
   StateCanExit -->|Yes| End
   StateCanExit -->|No| Later
 
@@ -584,11 +586,11 @@ The state machine supports three ways of changing states:
    
    ```csharp
    fsm.AddTransition(
-       new Transition(
-           from,
-           to,
-           condition
-       )
+       new Transition(
+           from,
+           to,
+           condition
+       )
    );
    ```
 
@@ -635,7 +637,7 @@ The state machine supports three ways of changing states:
    fsm.Trigger("OnCollision");
    ```
 
-Therefore UnityHFSM supports **both polling-based and event-based** transitions, as well as the feature to bypass the concept of transitions all together. That's pretty cool.
+Therefore, UnityHFSM supports **both polling-based and event-based** transitions, as well as the feature to bypass the concept of transitions all together. That's pretty cool.
 
 There is also a slight variation of the `Transition` state change behaviour, that allows you to change to a specific state **from any** other state (a "global" transition as opposed to a "local" / "direct" transition). They have the same `forceInstantly` / `needsExitTime` handling as normal transitions.
 
@@ -669,7 +671,7 @@ fsm.AddTriggerTransitionFromAny(
 );
 ```
 
-## Control flow of OnLogic
+## Control Flow of OnLogic
 
 Every StateMachine's `OnLogic` method manages the automatic transitions via `Transition` (`TransitionBase`) objects and the active state's logic function.
 
@@ -778,7 +780,7 @@ void Start()
 }
 ```
 
-The `CoState` class also allows you to pass in an iterator function that takes the `CoState` as a parameter. One of the side-effects of the way the UnityHFSM is internally implemented regarding its inheritance hierarchy and its support for generics, is that the function has to take the state as a `CoState<string, string>` object and not simply as `CoState`:
+The `CoState` class also allows you to pass in an iterator function that takes the `CoState` as a parameter. One of the side effects of the way the UnityHFSM is internally implemented regarding its inheritance hierarchy and its support for generics, is that the function has to take the state as a `CoState<string, string>` object and not simply as `CoState`:
 
 ```csharp
 IEnumerator SendData(CoState<string, string> state)
@@ -789,7 +791,16 @@ IEnumerator SendData(CoState<string, string> state)
 
 > **Tip:** When designing your state machine, it can sometimes be difficult to decide when to use a nested state machine and when to use a coroutine via `CoState`. Although both can usually achieve the desired outcome, one may be a lot simpler to implement than the other. As a rule of thumb, use a coroutine if you notice that your state diagram resembles a flowchart, otherwise use a hierarchical state machine.
 
-## Class-based architecture
+## Custom Events
+
+By default, UnityHFSM uses three main events:
+- On Enter: The state machine has switched to this state.
+- On Logic: The state machine checks the polling-based transitions and updates the active state.
+- On Exit: The state machine has switched to another state.
+
+In Unity, having one update function (on logic) is often not enough, as we sometimes want to run code in the `FixedUpdate` or `LateUpdate` calls. In UnityHFSM we can add such custom events to the state machine via the **action system**. For more information and usage instructions you can check out the complete [feature overview wiki page](https://github.com/Inspiaaa/UnityHFSM/wiki).
+
+## Class-Based Architecture
 
 UnityHFSM is fundamentally designed in an object-oriented manner which allows you to easily create custom state and transition types. By simply inheriting from the common base classes (`StateBase`, `TransitionBase`), custom states and transitions can be developed. This is also how the built-in state and transition types, such as `CoState` and `TransitionAfter`, have been implemented internally.
 
@@ -829,6 +840,8 @@ class CustomTransition : TransitionBase
     public override void AfterTransition() { }
 }
 ```
+
+When developing custom state and transition classes, it's also worth understanding how UnityHFSM handles generics (see below) and how the inheritance hierarchy is structured (see the [wiki](https://github.com/Inspiaaa/UnityHFSM/wiki/State-Classes)), so that you can support custom actions (events) in your classes.
 
 ## Generics
 
@@ -893,15 +906,58 @@ idleFsm.AddState("Animation 2");
 // ...
 ```
 
+### A Short Note on Performance
+
+UnityHFSM is engineered with both power and performance in mind. It’s designed to deliver robust functionality without compromising on efficiency, making it an **ideal choice for both small and complex projects** in Unity.
+
+The source code has been carefully benchmarked and optimised to maintain consistent performance across a wide range of use cases.
+
+It follows a "pay only for what you use" design philosophy, both in terms of **memory and performance**. That means that supporting more features does not come at the price of performance. For example, thanks to **lazy initialisation**, UnityHFSM remains extremely lightweight for smaller scenarios, when less features are used. At the same time, its scalable architecture and advanced features are fully capable of handling the demands of larger, more complex projects efficiently.
+
+## Debugging Tips
+
+Here are a couple of tips and tricks you can use to debug complex state machines:
+
+- **Error messages**: When UnityHFSM detects a problem, it throws an exception with a detailed error message that can help you pinpoint the problem and find a solution.
+  - Usually, the **first error** that is thrown is the most important one, as the following ones are most likely a just a consequence of the first error.
+  - As the error messages span multiple lines, you have to **click on the error** in the console in the Unity Editor in order to see the full message.
+
+  **Example error message:**
+  ```
+  StateMachineException: 
+  In state machine 'Root/Fight'
+  Context: Switching states
+  Problem: The state "Wait" has not been defined yet / doesn't exist.
+  Solution: 
+  1. Check that there are no typos in the state names and transition from and to names
+  2. Add this state before calling Init / OnEnter / OnLogic / RequestStateChange / ...
+  ```
+
+  It explains where this error occurred (in the `Fight` child state machine), what went wrong (target state of the transition was not found), and possible solutions.
+
+- When a hierarchical state machine is not behaving as expected, you can call the `GetActiveHierarchyPath()` method on the root state machine and print its result to the console. It tells you **which states are currently active** within a hierarchical state machine:
+
+  ```csharp
+  print(fsm.GetActiveHierarchyPath());  // e.g. "/ExtractIntel/CollectData"
+  ```
+
+- Alternatively, if you prefer a more **visual approach**, you can use the **animator graph** feature. It creates an `AnimatorController` in the Unity Editor that lets you understand the structure of a state hierarchy visually. At the same time, it can show you in real-time which state the state machine is currently in.
+
+  ![Animator Graph Example](https://raw.githubusercontent.com/Inspiaaa/UnityHFSM/d679f37e70eada76f7742a53b3eed03bb6a4dfe3/docs/Images/AnimatorGraphVideo.gif)
+
+  You can find a tutorial on this topic in the [wiki](https://github.com/Inspiaaa/UnityHFSM/wiki/Visualising-State-Machines-with-Animator-Graphs).
+
+- If you are working on more advanced code and want to produce accurate information regarding the path to the current state **from within the state itself**, without having access to the root state machine, you can use the inspection-related code. The `UnityHFSM.Inspection` namespace is the foundation for dynamic tools like the animator graph feature, but can also be used for debugging (it's what is used for the built-in error messages). In particular, the `StateMachineWalker` class could be of interest:
+
+  ```csharp
+  print(StateMachineWalker.GetStringPathOfState(this.fsm));  
+  // Prints the path to the current state.
+  // E.g. "Root/Fight/Hit"
+  ```
+
 # Development
 
-### Running the tests
-
-UnityHFSM has a test suite that can be run from Unity's Test Runner window.
-
-1. Open <kbd>Window</kbd> > <kbd>General</kbd> > <kbd>Test Runner</kbd>
-
-2. To run the tests, click the <kbd>Run All</kbd> button
+If you want to develop new code for UnityHFSM or contribute to the project, you can take a look at the [development wiki page](https://github.com/Inspiaaa/UnityHFSM/wiki/Development). It gives you a brief introduction to the project file structure and a short guide on how to run the unit tests.
 
 ---
 

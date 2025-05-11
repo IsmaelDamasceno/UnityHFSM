@@ -1,16 +1,18 @@
 
+using UnityHFSM.Inspection;
+
 namespace UnityHFSM
 {
 	/// <summary>
 	/// The base class of all states.
 	/// </summary>
-	public class StateBase<TStateId>
+	public class StateBase<TStateId> : IVisitableState
 	{
-		public bool needsExitTime;
-		public bool isGhostState;
+		public readonly bool needsExitTime;
+		public readonly bool isGhostState;
 		public TStateId name;
 
-		public IStateMachine fsm;
+		public IStateTimingManager fsm;
 
 		/// <summary>
 		/// Initialises a new instance of the StateBase class.
@@ -29,7 +31,7 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// Called to initialise the state, after values like name and fsm have been set.
+		/// Called to initialise the state, after values like <c>name</c> and <c>fsm</c> have been set.
 		/// </summary>
 		public virtual void Init()
 		{
@@ -61,10 +63,11 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// (Only if needsExitTime is true):
+		/// (Only if <c>needsExitTime</c> is true):
 		/// 	Called when a state transition from this state to another state should happen.
-		/// 	If it can exit, it should call fsm.StateCanExit()
-		/// 	and if it can not exit right now, it should call fsm.StateCanExit() later in e.g. OnLogic().
+		/// 	If it can exit, it should call <c>fsm.StateCanExit()</c>
+		/// 	and if it can not exit right now, it should call <c>fsm.StateCanExit()</c> later
+		///		in e.g. <c>OnLogic()</c>.
 		/// </summary>
 		public virtual void OnExitRequest()
 		{
@@ -73,13 +76,24 @@ namespace UnityHFSM
 
 		/// <summary>
 		/// Returns a string representation of all active states in the hierarchy,
-		/// e.g. "/Move/Jump/Falling".
-		/// In contrast, the state machine's ActiveStateName property only returns the name
+		/// e.g. <c>"/Move/Jump/Falling"</c>.
+		/// In contrast, the state machine's <c>ActiveStateName</c> property only returns the name
 		/// of its active state, not of any nested states.
 		/// </summary>
 		public virtual string GetActiveHierarchyPath()
 		{
 			return name.ToString();
+		}
+
+		/// <summary>
+		/// Accepts a visitor that can perform operations on the current state.
+		/// This method is part of the Visitor Pattern, which allows adding new behavior
+		/// to state machine states without modifying their class structure. It is used to
+		/// implement dynamic inspection tools for hierarchical state machines.
+		/// </summary>
+		public virtual void AcceptVisitor(IStateVisitor visitor)
+		{
+			visitor.VisitRegularState(this);
 		}
 	}
 

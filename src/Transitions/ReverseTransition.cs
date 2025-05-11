@@ -4,13 +4,13 @@ namespace UnityHFSM
 	/// A ReverseTransition wraps another transition, but reverses it. The "from"
 	/// and "to" states are swapped. Only when the condition of the wrapped transition
 	/// is false does it transition.
-	/// The BeforeTransition and AfterTransition callbacks of the the wrapped transition
+	/// The <c>BeforeTransition</c> and <c>AfterTransition</c> callbacks of the wrapped transition
 	/// are also swapped.
 	/// </summary>
 	public class ReverseTransition<TStateId> : TransitionBase<TStateId>
 	{
-		public TransitionBase<TStateId> wrappedTransition;
-		private bool shouldInitWrappedTransition;
+		public readonly TransitionBase<TStateId> wrappedTransition;
+		private readonly bool shouldInitWrappedTransition;
 
 		public ReverseTransition(
 				TransitionBase<TStateId> wrappedTransition,

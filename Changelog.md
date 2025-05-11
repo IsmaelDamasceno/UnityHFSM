@@ -2,6 +2,91 @@
 
 ---
 
+## 2.2
+
+### Added
+
+- **Animator Graph debugging and visualisation tool**: A new code-based tool has been added to UnityHFSM that allows you to generate an AnimatorController from a hierarchical state machine. This lets you explore a state hierarchy visually in the Unity editor, and at the same time, can be used to display a live preview at runtime.
+
+  ![Animator Graph Example](https://raw.githubusercontent.com/Inspiaaa/UnityHFSM/0ce3902e0f851db2926a7bdd2cfa1af65764a6e4/docs/Images/AnimatorGraphExample.png)
+
+  Example usage:
+  ```csharp
+  void Start() {
+      // Setup fsm here ...
+  
+      // Creates an AnimatorController that can be viewed in the Unity Editor.
+      HfsmAnimatorGraph.CreateAnimatorFromStateMachine(
+          fsm,
+          outputFolderPath: "Assets/DebugAnimators",
+          animatorName: "StateMachine.controller");
+          
+      fsm.Init();
+  }
+  
+  void Update() {
+      fsm.OnLogic();
+  
+      // Previews the active state by updating an Animator component attached to
+      // a game object. By clicking on this game object and opening the animator
+      // controller, you can see which state the state machine is in at runtime.
+      HfsmAnimatorGraph.PreviewStateMachineInAnimator(fsm, animator);
+  }
+  ```
+
+- **Advanced state machine inspection via code**: The ability to inspect and analyse a hierarchical state machine from code has been greatly improved. This lays the foundation for dynamic tools that operate on state hierarchies, such as the new animator graph generator.
+  - Implemented a visitor pattern on the state types that allows you to interact with the different (generic) classes more easily. See the new `AcceptVisitor(...)` method in `StateBase` and the `IStateVisitor` interface.
+  - The new `StateMachineWalker` class can be used to recursively traverse a state hierarchy. It supports the use of different generic type parameters for each layer out of the box.
+  - `StateMachinePath` is a new class used by the inspection-related code. It is a light-weight, hashable and equatable type that can be used to uniquely identify states in a hierarchy, avoiding possible naming collisions that can arise using a simpler string-based approach. It, too, supports different state ID types for each level.
+  - `StateMachine`s provide new methods that let you extract the added states and transitions at runtime. 
+    - `GetStartStateName`
+    - `GetAllStates` and `GetAllStateNames`
+    - `GetAllTransitions`, `GetAllTransitionsFromAny`, `GetAllTriggerTransitions`, `GetAllTriggerTransitionsFromAny`
+  - The `StateMachine` class has two new properties: `PendingState` and `PendingStateName` that allow you to get the target state of pending (delayed) transitions.
+
+- **New callbacks in `DecoratedTransition`**: (see below for more information regarding the changes to the wrapper classes). The wrapper class allows you to add custom callbacks that are run when and after the transition occurs:
+  ```csharp
+  fsm.AddTransition(new DecoratedTransition(someTransition, 
+      beforeOnTransition: t => Debug.Log("Called before onTransition of wrapped transition")
+  ));
+  ```
+
+### Improved and Changed
+
+- **Improved the performance** of UnityHFSM:
+  - The general performance of transitions has been improved.
+  - Transitions from states with exit time that can instantly exit are about 20% faster now.
+  - The overhead of having a transition that is delayed each frame has been reduced by up to 60%
+
+- **The state and transition wrapper classes have been reworked**:
+  - The classes have been renamed to reflect the underlying design pattern: `StateWrapper -> StateDecorator`, `WrappedState -> DecoratedState`, `TransitionWrapper -> TransitionDecorator`, `WrappedTransition -> DecoratedTransition`
+  - The actual "wrapper" classes which were previously nested inside the decorators, have been made independent classes in their own files. This makes them easier to use for "single-use" applications and improves their visibility within the codebase. 
+
+- **The `IStateMachine` interface has been reworked and split into two interfaces**:
+  - `IStateTimingManager`: This is essentially the `IStateMachine` from older versions. Its new name underlines its purpose more accurately.
+  - `IStateMachine<T>`: This interface extends the `IStateTimingManager` interface and makes it easier to access some information from StateMachines without needing to perform a cast. (E.g. access to the current state, pending state, method to get a state by name)
+
+- **Better error messages**: The built-in error messages have been improved thanks to the new introspection infrastructure: State machine exceptions now include information about where in the hierarchy the issue occurred. E.g.
+
+  ```
+  StateMachineException: 
+  In state machine 'Root/Fight'
+  Context: Running OnLogic
+  Problem: The active state is null because the state machine has not been set up yet.
+  Solution: Call fsm.SetStartState(...) and fsm.Init() or fsm.OnEnter() to initialize the state machine.
+  ```
+- **Improved documentation**: The XML documentation comments in the code (which show in the IDE when inspecting a method / class) has been improved regarding wording, coverage and formatting. 
+
+- Refactor: Many state and transition fields have been made readonly (and partially also private) in order to make the codebase easier to maintain and to prevent bugs from accidental changes to fields that should have been constant. If you relied on them being mutable for dynamic behaviour, please simply remove the `readonly` property in your local copy of UnityHFSM. 
+
+### Fixed
+
+- Fixed bug that `StateMachine`s inside `ParallelStates` don't react to global triggers (#48).
+
+- Fixed event-related bug in `ParallelStates` that incorrectly called certain methods (e.g. `Trigger` and `OnLogic`) on sub-states after a previous state caused an exit / transition.  
+
+---
+
 ## 2.1
 
 ### Added

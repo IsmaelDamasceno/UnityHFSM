@@ -6,21 +6,21 @@ namespace UnityHFSM
 	/// </summary>
 	public class TransitionBase<TStateId> : ITransitionListener
 	{
-		public TStateId from;
-		public TStateId to;
+		public readonly TStateId from;
+		public readonly TStateId to;
 
-		public bool forceInstantly;
+		public readonly bool forceInstantly;
 		public bool isExitTransition;
 
-		public IStateMachine fsm;
+		public IStateMachine<TStateId> fsm;
 
 		/// <summary>
 		/// Initialises a new instance of the TransitionBase class.
 		/// </summary>
 		/// <param name="from">The name / identifier of the active state.</param>
 		/// <param name="to">The name / identifier of the next state.</param>
-		/// <param name="forceInstantly">Ignores the needsExitTime of the active state if forceInstantly is true.
-		/// 	=> Forces an instant transition</param>
+		/// <param name="forceInstantly">Ignores the <c>needsExitTime</c> of the active state
+		///     if <c>forceInstantly</c> is true. => Forces an instant transition</param>
 		public TransitionBase(TStateId from, TStateId to, bool forceInstantly = false)
 		{
 			this.from = from;
@@ -30,7 +30,7 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// Called to initialise the transition, after values like fsm have been set.
+		/// Called to initialise the transition, after values like <c>fsm</c> have been set.
 		/// </summary>
 		public virtual void Init()
 		{
@@ -38,7 +38,7 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// Called when the state machine enters the "from" state.
+		/// Called when the state machine enters the <c>from</c> state.
 		/// </summary>
 		public virtual void OnEnter()
 		{

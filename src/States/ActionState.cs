@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace UnityHFSM
 {
@@ -22,8 +21,8 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// Adds an action that can be called with OnAction(). Actions are like the builtin events
-		/// OnEnter / OnLogic / ... but are defined by the user.
+		/// Adds an action that can be called with <c>OnAction()</c>. Actions are like the builtin events
+		/// <c>OnEnter</c> / <c>OnLogic</c> / ... but are defined by the user.
 		/// </summary>
 		/// <param name="trigger">Name of the action.</param>
 		/// <param name="action">Function that should be called when the action is run.</param>
@@ -36,9 +35,9 @@ namespace UnityHFSM
 		}
 
 		/// <summary>
-		/// Adds an action that can be called with OnAction<T>(). This overload allows you to
+		/// Adds an action that can be called with <c>OnAction&lt;T&gt;()</c>. This overload allows you to
 		/// run a function that takes one data parameter.
-		/// Actions are like the builtin events OnEnter / OnLogic / ... but are defined by the user.
+		/// Actions are like the builtin events <c>OnEnter</c> / <c>OnLogic</c> / ... but are defined by the user.
 		/// </summary>
 		/// <param name="trigger">Name of the action.</param>
 		/// <param name="action">Function that should be called when the action is run.</param>

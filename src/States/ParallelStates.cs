@@ -7,16 +7,20 @@ namespace UnityHFSM
 	/// A state that can run multiple states in parallel.
 	/// </summary>
 	/// <remarks>
-	/// If needsExitTime is set to true, it will exit when *any* one of the child states calls StateCanExit()
+	/// If <c>needsExitTime</c> is set to true, it will exit when *any* one of the child states calls <c>StateCanExit()</c>
 	/// on this class. Note that having multiple child states that all do not need exit time and hence don't
-	/// call the StateCanExit() method, will mean that this state will never exit.
-	/// This behaviour can be overridden by specifying a canExit function that determines when this state may exit.
-	/// This will ignore the needsExitTime and StateCanExit() calls of the child states. It works the same as the
-	/// canExit feature of the State class.
+	/// call the <c>StateCanExit()</c> method, will mean that this state will never exit.
+	/// This behaviour can be overridden by specifying a <c>canExit</c> function that determines when this state may exit.
+	/// This will ignore the <c>needsExitTime</c> and <c>StateCanExit()</c> calls of the child states.
+	/// It works the same as the <c>canExit</c> feature of the <see cref="State"/> class.
 	/// </remarks>
-	public class ParallelStates<TOwnId, TStateId, TEvent> : StateBase<TOwnId>, IActionable<TEvent>, IStateMachine
+	public class ParallelStates<TOwnId, TStateId, TEvent> :
+		StateBase<TOwnId>,
+		IActionable<TEvent>,
+		ITriggerable<TEvent>,
+		IStateTimingManager
 	{
-		private List<StateBase<TStateId>> states = new List<StateBase<TStateId>>();
+		private readonly List<StateBase<TStateId>> states = new List<StateBase<TStateId>>();
 
 		// When the states are passed in via the constructor, they are not assigned names / identifiers.
 		// This means that the active hierarchy path cannot include them (which would be used for debugging purposes).
@@ -25,13 +29,16 @@ namespace UnityHFSM
 		// This variable keeps track whether this state is currently active. It is used to prevent
 		// StateCanExit() calls from the child states to be passed on to the parent state machine
 		// when this state is no longer active, which would result in unwanted behaviour
-		// (e.g. two transitions).
+		// (e.g. two transitions). It is also used to prevent calling events (e.g. OnLogic) on
+		// sub-states when the state has already exited.
+		// Note that this system currently may not work, when the state exits and re-enters in the same
+		// cascade of events (call stack).
 		private bool isActive;
 
 		private Func<ParallelStates<TOwnId, TStateId, TEvent>, bool> canExit;
 
 		public bool HasPendingTransition => fsm.HasPendingTransition;
-		public IStateMachine ParentFsm => fsm;
+		public IStateTimingManager ParentFsm => fsm;
 
 		/// <inheritdoc cref="ParallelStates{T, T, T}(Func{ParallelStates{T, T, T}, bool}, bool, bool, StateBase{T}[])"/>
 		public ParallelStates(
@@ -59,12 +66,12 @@ namespace UnityHFSM
 		/// <summary>
 		///	Initialises a new instance of the ParallelStates class.
 		/// </summary>
-		/// <param name="canExit">(Only if needsExitTime is true):
+		/// <param name="canExit">(Only if <c>needsExitTime</c> is true):
 		/// 	Function that determines if the state is ready to exit (true) or not (false).
 		/// 	It is called OnExitRequest and on each logic step when a transition is pending.</param>
 		/// <param name="states">States to run in parallel. Note that they are not assigned names / identifiers
 		/// 	and will therefore not be included in the active hierarchy path. If this is unwanted,
-		/// 	add the states using AddState() instead.</param>
+		/// 	add the states using <c>AddState()</c> instead.</param>
 		/// <inheritdoc cref="StateBase{T}(bool, bool)"/>
 		public ParallelStates(
 			Func<ParallelStates<TOwnId, TStateId, TEvent>, bool> canExit,
@@ -122,6 +129,11 @@ namespace UnityHFSM
 			foreach (var state in states)
 			{
 				state.OnLogic();
+
+				if (!isActive)
+				{
+					return;
+				}
 			}
 
 			if (needsExitTime && canExit != null && fsm.HasPendingTransition && canExit(this))
@@ -149,6 +161,11 @@ namespace UnityHFSM
 				foreach (var state in states)
 				{
 					state.OnExitRequest();
+
+					if (!isActive)
+					{
+						return;
+					}
 				}
 			}
 			else
@@ -183,6 +200,19 @@ namespace UnityHFSM
 			if (isActive && canExit == null)
 			{
 				fsm.StateCanExit();
+			}
+		}
+
+		public void Trigger(TEvent trigger)
+		{
+			foreach (var state in states)
+			{
+				(state as ITriggerable<TEvent>)?.Trigger(trigger);
+
+				if (!isActive)
+				{
+					return;
+				}
 			}
 		}
 
@@ -250,6 +280,7 @@ namespace UnityHFSM
 			params StateBase<TStateId>[] states) : base(canExit, needsExitTime, isGhostState, states) { }
 	}
 
+	/// <inheritdoc />
 	public class ParallelStates<TStateId> : ParallelStates<TStateId, TStateId, string>
 	{
 		/// <inheritdoc />
@@ -280,6 +311,7 @@ namespace UnityHFSM
 			params StateBase<TStateId>[] states) : base(canExit, needsExitTime, isGhostState, states) { }
 	}
 
+	/// <inheritdoc />
 	public class ParallelStates : ParallelStates<string, string, string>
 	{
 		/// <inheritdoc />
